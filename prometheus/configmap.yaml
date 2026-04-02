@@ -1,0 +1,50 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.cu/name: prometheus
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 30s
+      evaluation_interval: 15s
+
+    scrape_configs:
+      - job_name: 'prometheus'
+        static_configs:
+          - targets: ['localhost:9090']
+
+      # kubernetes_sd_configs로 모든 노드의 node-exporter 자동 discovery
+      - job_name: 'node-exporter'
+        kubernetes_sd_configs:
+          - role: node
+        relabel_configs:
+          # 노드 IP + 9100 포트로 스크랩
+          - source_labels: [__address__]
+            regex: '(.*):.*'
+            replacement: '${1}:9100'
+            target_label: __address__
+          - source_labels: [__meta_kubernetes_node_name]
+            target_label: node
+
+      - job_name: 'kube-state-metrics'
+        static_configs:
+          - targets:
+              - 'kube-state-metrics-svc.monitoring.svc.cluster.local:8080'
+
+      - job_name: 'grafana'
+        static_configs:
+          - targets:
+              - 'grafana-svc.monitoring.svc.cluster.local:3000'
+
+
+      - job_name: "slurm_exporter"
+        static_configs:
+          - targets:
+              - "172.28.227.10:9199"
+            labels:
+              app: "slurm_exporter"

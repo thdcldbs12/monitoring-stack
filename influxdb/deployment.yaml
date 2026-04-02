@@ -1,0 +1,67 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: influxdb
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: influxdb
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: influxdb
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: influxdb
+    spec:
+      nodeSelector:
+        name: cluster
+      containers:
+        - name: influxdb
+          image: k3s-cluster:8080/influxdb:1.12
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8086
+          env:
+            - name: INFLUXDB_DB
+              value: "system"
+            - name: INFLUXDB_ADMIN_USER
+              value: "admin"
+            - name: INFLUXDB_ADMIN_PASSWORD
+              value: "admin123"
+            - name: INFLUXDB_USER
+              value: "telegraf"
+            - name: INFLUXDB_USER_PASSWORD
+              value: "telegraf123"
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/influxdb
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "256Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: 8086
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /ping
+              port: 8086
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: influxdb-pvc

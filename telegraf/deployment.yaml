@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: telegraf
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: telegraf
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: telegraf
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: telegraf
+    spec:
+      nodeSelector:
+        name: cluster
+      containers:
+        - name: telegraf
+          image: k3s-cluster:8080/telegraf:1.38
+          imagePullPolicy: IfNotPresent
+          args:
+            - "--config"
+            - "/etc/telegraf/telegraf.conf"
+            - "--config-directory"
+            - "/etc/telegraf/telegraf.d"
+          volumeMounts:
+            - name: config
+              mountPath: /etc/telegraf/telegraf.conf
+              subPath: telegraf.conf
+              readOnly: true
+            - name: config
+              mountPath: /etc/telegraf/telegraf.d/input_apc_pdu.conf
+              subPath: input_apc_pdu.conf
+              readOnly: true
+            - name: config
+              mountPath: /etc/telegraf/telegraf.d/input_idrac.conf
+              subPath: input_idrac.conf
+              readOnly: true
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+      volumes:
+        - name: config
+          configMap:
+            name: telegraf-config # 이전 단계에서 만든 ConfigMap 이름과 일치해야 함
